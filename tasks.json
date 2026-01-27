@@ -1,0 +1,16 @@
+[
+  {
+    "mata_pelajaran": "MTK",
+    "nama_tugas": "Fungsi",
+    "pemberi_tugas": "Pak Kus",
+    "tanggal": "27-01-2026",
+    "deadline": "07-02-2028"
+  },
+  {
+    "mata_pelajaran": "sejarah",
+    "nama_tugas": "resume",
+    "pemberi_tugas": "Pak Mukhtar",
+    "tanggal": "27-01-2026",
+    "deadline": "11-03-2026"
+  }
+]
