@@ -1,9 +1,31 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from enum import Enum
 
 # File untuk menyimpan data tugas
 DATA_FILE = "tasks.json"
+
+# Konstanta untuk warna terminal (ANSI codes)
+class Colors:
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    MAGENTA = '\033[95m'
+    CYAN = '\033[96m'
+    WHITE = '\033[97m'
+    BG_RED = '\033[41m'
+    BG_GREEN = '\033[42m'
+    BG_YELLOW = '\033[43m'
+    BG_BLUE = '\033[44m'
+
+# Status tugas
+class TaskStatus(Enum):
+    DONE = "selesai"
+    PENDING = "pending"
 
 
 def load_tasks():
@@ -11,7 +33,12 @@ def load_tasks():
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, 'r', encoding='utf-8') as file:
-                return json.load(file)
+                tasks = json.load(file)
+                # Tambahkan field status jika belum ada untuk kompatibilitas
+                for task in tasks:
+                    if 'status' not in task:
+                        task['status'] = TaskStatus.PENDING.value
+                return tasks
         except json.JSONDecodeError:
             return []
     return []
@@ -23,42 +50,153 @@ def save_tasks(tasks):
         json.dump(tasks, file, ensure_ascii=False, indent=2)
 
 
-def display_tasks(tasks):
-    """Menampilkan semua data tugas"""
-    if not tasks:
-        print("\n❌ Tidak ada tugas yang tersimpan.\n")
+def get_days_until_deadline(deadline_str):
+    """Menghitung jumlah hari hingga deadline"""
+    try:
+        deadline = datetime.strptime(deadline_str, "%d-%m-%Y")
+        today = datetime.now()
+        days = (deadline - today).days
+        return days
+    except ValueError:
+        return float('inf')
+
+
+def get_status_icon(status):
+    """Mendapatkan icon berdasarkan status tugas"""
+    if status == TaskStatus.DONE.value:
+        return "✅"
+    else:
+        return "📝"
+
+
+def get_deadline_color(days_left):
+    """Mendapatkan warna berdasarkan jarak deadline"""
+    if days_left < 0:
+        return Colors.RED  # Sudah lewat
+    elif days_left == 0:
+        return Colors.BG_RED + Colors.WHITE  # Hari ini
+    elif days_left <= 3:
+        return Colors.YELLOW  # Sangat dekat
+    elif days_left <= 7:
+        return Colors.CYAN  # Dekat
+    else:
+        return Colors.GREEN  # Masih lama
+
+
+def check_reminders(tasks):
+    """Mengecek dan menampilkan pengingat untuk deadline yang akan datang"""
+    reminders = []
+    
+    for i, task in enumerate(tasks):
+        days_left = get_days_until_deadline(task['deadline'])
+        
+        if days_left < 0:
+            reminders.append({
+                'index': i,
+                'nama_tugas': task['nama_tugas'],
+                'deadline': task['deadline'],
+                'days_left': days_left,
+                'tipe': '⚠️ LEWAT'
+            })
+        elif days_left == 0:
+            reminders.append({
+                'index': i,
+                'nama_tugas': task['nama_tugas'],
+                'deadline': task['deadline'],
+                'days_left': days_left,
+                'tipe': '🔴 HARI INI'
+            })
+        elif days_left <= 3:
+            reminders.append({
+                'index': i,
+                'nama_tugas': task['nama_tugas'],
+                'deadline': task['deadline'],
+                'days_left': days_left,
+                'tipe': '🟠 3 HARI LAGI'
+            })
+        elif days_left <= 7:
+            reminders.append({
+                'index': i,
+                'nama_tugas': task['nama_tugas'],
+                'deadline': task['deadline'],
+                'days_left': days_left,
+                'tipe': '🟡 DALAM SEMINGGU'
+            })
+    
+    return reminders
+
+
+def display_reminders(tasks):
+    """Menampilkan pengingat deadline"""
+    reminders = check_reminders(tasks)
+    
+    if not reminders:
+        print(f"{Colors.GREEN}✅ Tidak ada deadline yang mendesak.{Colors.RESET}\n")
         return
     
-    print("\n" + "=" * 100)
-    print(f"{'No':<5} {'Mata Pelajaran':<20} {'Nama Tugas':<25} {'Pemberi Tugas':<20} {'Tanggal':<12} {'Deadline':<12}")
-    print("=" * 100)
+    print(f"\n{Colors.BOLD}{Colors.RED}{'='*80}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.RED}⏰ PENGINGAT DEADLINE YANG MENDESAK{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.RED}{'='*80}{Colors.RESET}\n")
+    
+    for reminder in reminders:
+        print(f"{reminder['tipe']} {Colors.BOLD}{reminder['nama_tugas']}{Colors.RESET}")
+        print(f"   📅 Deadline: {reminder['deadline']} ({reminder['days_left']} hari)")
+        print()
+
+
+def display_tasks(tasks, show_reminders=True):
+    """Menampilkan semua data tugas dalam format tabel yang rapi"""
+    if not tasks:
+        print(f"\n{Colors.YELLOW}❌ Tidak ada tugas yang tersimpan.{Colors.RESET}\n")
+        return
+    
+    if show_reminders:
+        display_reminders(tasks)
+    
+    print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*130}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'No':<4} {'Status':<8} {'Mata Pelajaran':<18} {'Nama Tugas':<28} {'Pemberi Tugas':<16} {'Tanggal':<12} {'Deadline':<12} {'Hari ke Deadline':<17}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'='*130}{Colors.RESET}")
     
     for i, task in enumerate(tasks, 1):
-        print(f"{i:<5} {task['mata_pelajaran']:<20} {task['nama_tugas']:<25} {task['pemberi_tugas']:<20} {task['tanggal']:<12} {task['deadline']:<12}")
+        status_icon = get_status_icon(task.get('status', TaskStatus.PENDING.value))
+        days_left = get_days_until_deadline(task['deadline'])
+        
+        # Tentukan warna deadline
+        color = get_deadline_color(days_left)
+        
+        # Format hari ke deadline
+        if days_left < 0:
+            days_text = f"{color}LEWAT {abs(days_left)} hari{Colors.RESET}"
+        elif days_left == 0:
+            days_text = f"{color}HARI INI{Colors.RESET}"
+        else:
+            days_text = f"{color}{days_left} hari lagi{Colors.RESET}"
+        
+        print(f"{i:<4} {status_icon:<8} {task['mata_pelajaran']:<18} {task['nama_tugas']:<28} {task['pemberi_tugas']:<16} {task['tanggal']:<12} {task['deadline']:<12} {days_text:<17}")
     
-    print("=" * 100 + "\n")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'='*130}{Colors.RESET}\n")
 
 
 def add_task(tasks):
     """Menambah tugas baru"""
-    print("\n--- Tambah Tugas Baru ---")
+    print(f"\n{Colors.BOLD}{Colors.BLUE}--- Tambah Tugas Baru ---{Colors.RESET}")
     
-    mata_pelajaran = input("Masukkan mata pelajaran: ").strip()
+    mata_pelajaran = input(f"{Colors.CYAN}Masukkan mata pelajaran: {Colors.RESET}").strip()
     if not mata_pelajaran:
-        print("❌ Mata pelajaran tidak boleh kosong!\n")
+        print(f"{Colors.RED}❌ Mata pelajaran tidak boleh kosong!{Colors.RESET}\n")
         return
     
-    nama_tugas = input("Masukkan nama tugas: ").strip()
+    nama_tugas = input(f"{Colors.CYAN}Masukkan nama tugas: {Colors.RESET}").strip()
     if not nama_tugas:
-        print("❌ Nama tugas tidak boleh kosong!\n")
+        print(f"{Colors.RED}❌ Nama tugas tidak boleh kosong!{Colors.RESET}\n")
         return
     
-    pemberi_tugas = input("Masukkan nama pemberi tugas: ").strip()
+    pemberi_tugas = input(f"{Colors.CYAN}Masukkan nama pemberi tugas: {Colors.RESET}").strip()
     if not pemberi_tugas:
-        print("❌ Nama pemberi tugas tidak boleh kosong!\n")
+        print(f"{Colors.RED}❌ Nama pemberi tugas tidak boleh kosong!{Colors.RESET}\n")
         return
     
-    tanggal = input("Masukkan tanggal tugas (dd-mm-yyyy) [otomatis hari ini]: ").strip()
+    tanggal = input(f"{Colors.CYAN}Masukkan tanggal tugas (dd-mm-yyyy) [otomatis hari ini]: {Colors.RESET}").strip()
     if not tanggal:
         tanggal = datetime.now().strftime("%d-%m-%Y")
     else:
@@ -66,19 +204,19 @@ def add_task(tasks):
         try:
             datetime.strptime(tanggal, "%d-%m-%Y")
         except ValueError:
-            print("❌ Format tanggal tidak valid! Gunakan format dd-mm-yyyy\n")
+            print(f"{Colors.RED}❌ Format tanggal tidak valid! Gunakan format dd-mm-yyyy{Colors.RESET}\n")
             return
     
-    deadline = input("Masukkan deadline (dd-mm-yyyy): ").strip()
+    deadline = input(f"{Colors.CYAN}Masukkan deadline (dd-mm-yyyy): {Colors.RESET}").strip()
     if not deadline:
-        print("❌ Deadline tidak boleh kosong!\n")
+        print(f"{Colors.RED}❌ Deadline tidak boleh kosong!{Colors.RESET}\n")
         return
     else:
         # Validasi format deadline
         try:
             datetime.strptime(deadline, "%d-%m-%Y")
         except ValueError:
-            print("❌ Format deadline tidak valid! Gunakan format dd-mm-yyyy\n")
+            print(f"{Colors.RED}❌ Format deadline tidak valid! Gunakan format dd-mm-yyyy{Colors.RESET}\n")
             return
     
     task = {
@@ -86,12 +224,13 @@ def add_task(tasks):
         "nama_tugas": nama_tugas,
         "pemberi_tugas": pemberi_tugas,
         "tanggal": tanggal,
-        "deadline": deadline
+        "deadline": deadline,
+        "status": TaskStatus.PENDING.value
     }
     
     tasks.append(task)
     save_tasks(tasks)
-    print(f"✅ Tugas '{nama_tugas}' berhasil ditambahkan!\n")
+    print(f"{Colors.GREEN}✅ Tugas '{nama_tugas}' berhasil ditambahkan!{Colors.RESET}\n")
 
 
 def delete_task(tasks):
