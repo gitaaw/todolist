@@ -1,16 +1,42 @@
 [
   {
-    "mata_pelajaran": "MTK",
+    "mata_pelajaran": "Mtk",
     "nama_tugas": "Fungsi",
     "pemberi_tugas": "Pak Kus",
     "tanggal": "27-01-2026",
-    "deadline": "07-02-2028"
+    "deadline": "29-01-2026",
+    "status": "pending"
   },
   {
-    "mata_pelajaran": "sejarah",
-    "nama_tugas": "resume",
+    "mata_pelajaran": "Sejarah",
+    "nama_tugas": "Resume",
     "pemberi_tugas": "Pak Mukhtar",
     "tanggal": "27-01-2026",
-    "deadline": "11-03-2026"
+    "deadline": "28-01-2026",
+    "status": "selesai"
+  },
+  {
+    "mata_pelajaran": "Ekonomi",
+    "nama_tugas": "Ujian",
+    "pemberi_tugas": "Bu Ratri",
+    "tanggal": "28-01-2026",
+    "deadline": "29-01-2026",
+    "status": "pending"
+  },
+  {
+    "mata_pelajaran": "Sosiologi",
+    "nama_tugas": "Resume Film",
+    "pemberi_tugas": "Bu Dian",
+    "tanggal": "28-01-2026",
+    "deadline": "30-01-2026",
+    "status": "pending"
+  },
+  {
+    "mata_pelajaran": "Bahasa Jawa",
+    "nama_tugas": "Aksara Jawa",
+    "pemberi_tugas": "Bu Yuni",
+    "tanggal": "28-01-2026",
+    "deadline": "29-01-2026",
+    "status": "pending"
   }
 ]
